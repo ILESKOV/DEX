@@ -1,5 +1,5 @@
-const DEX = artifacts.require("DEX");
-const KCS = artifacts.require("KCS");
+const DEX = artifacts.require("DEX")
+const KCS = artifacts.require("KCS")
 const truffleAssert = require('truffle-assertions');
 
 contract("DEX", accounts => {
@@ -7,11 +7,11 @@ contract("DEX", accounts => {
     it("should throw an error if ETH balance is too low when creating BUY limit order", async () => {
         let dex = await DEX.deployed()
         let kcs = await KCS.deployed()
-        await truffleAssert.passes(
+        await truffleAssert.reverts(
             dex.createLimitOrder(0, web3.utils.fromUtf8("KCS"), 10, 1)
         )
         dex.depositEth({value: 10})
-        await truffleAssert.reverts(
+        await truffleAssert.passes(
             dex.createLimitOrder(0, web3.utils.fromUtf8("KCS"), 10, 1)
         )
     })
@@ -23,6 +23,7 @@ contract("DEX", accounts => {
             dex.createLimitOrder(1, web3.utils.fromUtf8("KCS"), 10, 1)
         )
         await kcs.approve(dex.address, 500);
+        await dex.addToken(web3.utils.fromUtf8("KCS"), kcs.address, {from: accounts[0]})
         await dex.deposit(10, web3.utils.fromUtf8("KCS"));
         await truffleAssert.passes(
             dex.createLimitOrder(1, web3.utils.fromUtf8("KCS"), 10, 1)
@@ -33,15 +34,16 @@ contract("DEX", accounts => {
         let dex = await DEX.deployed()
         let kcs = await KCS.deployed()
         await kcs.approve(dex.address, 500);
-        await dex.createLimitOrder(0, web3.utils.fromUtf8("KCS"), 1, 300)
-        await dex.createLimitOrder(0, web3.utils.fromUtf8("KCS"), 1, 100)
-        await dex.createLimitOrder(0, web3.utils.fromUtf8("KCS"), 1, 200)
+        await dex.depositEth({value: 3000});
+        await dex.createLimitOrder(0, web3.utils.fromUtf8("KCS"), 1, 300); 
+        await dex.createLimitOrder(0, web3.utils.fromUtf8("KCS"), 1, 100);
+        await dex.createLimitOrder(0, web3.utils.fromUtf8("KCS"), 1, 200);
 
         let orderbook = await dex.getOrderBook(web3.utils.fromUtf8("KCS"), 0);
         assert(orderbook.length > 0);
+        // console.log(orderbook);
         for (let i = 0; i < orderbook.length - 1; i++) {
-            const element = array[index];
-            assert(orderbook[i] >= orderbook[i+1])
+            assert(orderbook[i].price >= orderbook[i+1].price, "not right order in buy book")
         }
     })
     //The SELL order book should be ordered on price from lowest to highest starting at index 0
@@ -55,9 +57,18 @@ contract("DEX", accounts => {
 
         let orderbook = await dex.getOrderBook(web3.utils.fromUtf8("KCS"), 1);
         assert(orderbook.length > 0);
+
         for (let i = 0; i < orderbook.length - 1; i++) {
-            const element = array[index];
-            assert(orderbook[i] <= orderbook[i+1])
+            assert(orderbook[i].price <= orderbook[i+1].price, "not right order in sell book")
         }
     })
-}) 
+
+})
+
+    //When creating a SELL market order, the seller needs to have enough tokens for the trade
+    //When creating a BUY market order, the buyer needs to have enough ETH for the trade
+    //Market orders can be submitted even if the order book is empty
+    //Market orders should be filled until the order book is empty or the market order is 100% filled
+    //The eth balance of the buyer should decrease with the filled amount
+    //The token balances of the limit order sellers should decrease with the filled amounts
+    //Filled limit order should be removed from the orderbook

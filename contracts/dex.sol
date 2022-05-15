@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "./Wallet.sol";
@@ -16,6 +17,7 @@ contract DEX is Wallet {
         bytes32 ticker;
         uint amount;
         uint price;
+        uint filled;
     }
     uint public nextOrderId = 0;
 
@@ -25,37 +27,44 @@ contract DEX is Wallet {
         return orderBook[ticker][uint(side)];
     }
 
-    function createLimitOrder(Side side, bytes32 ticker, uint amount, uint price) public {
+    function createLimitOrder(Side side, bytes32 ticker, uint amount, uint price) public{
         if(side == Side.BUY){
-            require(balances[msg.sender]["ETH"] >= amount * price);
+            require(balances[msg.sender][bytes32("ETH")] >= amount * price);
         }
         else if(side == Side.SELL){
             require(balances[msg.sender][ticker] >= amount);
         }
 
         Order[] storage orders = orderBook[ticker][uint(side)];
-        //[Order1, Order2, ...]
-        orders.push(Order(nextOrderId, msg.sender, side, ticker, amount, price));
-        nextOrderId++;
+        orders.push(
+            Order(nextOrderId, msg.sender, side, ticker, amount, price, 0)
+        );
 
+        //Bubble sort
+        uint i = orders.length > 0 ? orders.length - 1 : 0;
         if(side == Side.BUY){
-            for(uint i = 0; i < orders.length; i++){
-                if(orders.price[i] < orders.price[i + 1]){
-                    Order memory order = orders[i];
-                    orders[i] = orders[i+1];
-                    orders[i+1] = order;
+            while(i > 0){
+                if(orders[i - 1].price > orders[i].price) {
+                    break;
                 }
+                Order memory orderToMove = orders[i - 1];
+                orders[i - 1] = orders[i];
+                orders[i] = orderToMove;
+                i--;
             }
         }
         else if(side == Side.SELL){
-            for(uint j = 0; j < orders.length; j++){
-                if(orders.price[j] > orders.price[j + 1]){
-                    Order memory order = orders[j];
-                    orders[j] = orders[j+1];
-                    orders[j+1] = order;
+            while(i > 0){
+                if(orders[i - 1].price < orders[i].price) {
+                    break;   
                 }
+                Order memory orderToMove = orders[i - 1];
+                orders[i - 1] = orders[i];
+                orders[i] = orderToMove;
+                i--;
             }
         }
 
-
+        nextOrderId++;
+    }
 }

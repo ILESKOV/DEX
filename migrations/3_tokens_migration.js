@@ -1,7 +1,7 @@
 const KCS = artifacts.require("KCS");
-const DEX = artifacts.require("DEX");
+/*const DEX = artifacts.require("DEX");*/
 
-module.exports = async function (deployer, network ,accounts) {
+module.exports = async function (deployer/*, network ,accounts*/) {
   await deployer.deploy(KCS);
 
   // let dex = await DEX.deployed();

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -34,6 +35,16 @@ function withdraw(uint amount, bytes32 ticker) external tokenExist(ticker) {
     balances[msg.sender][ticker] -= amount;
     IERC20(tokenMapping[ticker].tokenAddress).transfer(msg.sender, amount);
 
+}
+
+ function depositEth() payable external {
+     balances[msg.sender][bytes32("ETH")] = balances[msg.sender][bytes32("ETH")] + msg.value;
+}
+    
+function withdrawEth(uint amount) external {
+    require(balances[msg.sender][bytes32("ETH")] >= amount,'Insuffient balance'); 
+    balances[msg.sender][bytes32("ETH")] = balances[msg.sender][bytes32("ETH")] - amount;
+    msg.sender.call{value:amount}("");
 }
 
 }
